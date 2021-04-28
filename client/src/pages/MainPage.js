@@ -1,13 +1,15 @@
-import React from 'react'
+import React, {useContext} from 'react'
 import {useHttp} from "../hooks/httpUtils";
 import {useMessage} from "../hooks/materialToast"
 import {useState} from 'react'
 import {useEffect} from 'react'
+import {SocketIOContext} from "../context/SocketIOContext";
 
 export const MainPage = () => {
     const [longLink, setLongLink] = useState('')
     const [shortLink, setShortLink] = useState('')
-    const {loading, request, error, clearError} = useHttp()
+    const {error, clearError} = useHttp()
+    const {socket} = useContext(SocketIOContext);
     const message = useMessage()
     document.title = 'Сокращатель Swappy';
     useEffect(() => {
@@ -28,10 +30,17 @@ export const MainPage = () => {
 
     const getShortLinkButtonClick = async event => {
         try {
-            const data = await request('/system/randomShortLinkModel', "POST", {link: longLink})
-            setShortLink(`http://swappy.site/${data.message}`)
+            socket.emit("link:createAnonymous",{link: longLink},(callback)=>{
+              if (callback.success){
+                  setShortLink(`http://swappy.site/${callback.message}`)
+              } else {
+                  message(callback.message)
+              }
+            })
         }
-        catch (e) {}
+        catch (e) {
+            console.log(`Error: ${e.message}`)
+        }
 
     }
 

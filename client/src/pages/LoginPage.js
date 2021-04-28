@@ -2,19 +2,27 @@ import {useContext, useState, useEffect} from 'react'
 import {AuthContext} from "../context/AuthContext";
 import {useMessage} from "../hooks/materialToast";
 import {useHttp} from "../hooks/httpUtils";
+import {SocketIOContext} from "../context/SocketIOContext";
 
 export const LoginPage = () => {
     document.title = 'Авторизация';
     const auth = useContext(AuthContext)
+    const {socket} = useContext(SocketIOContext);
     const message = useMessage()
-    const {loading, request, error, clearError} = useHttp()
+    const {loading, error, clearError} = useHttp()
     const [form, setForm] = useState({password: '', login: ''})
 
     async function loginButtonClickHandler(event) {
         try {
-            const data = await request("/system/auth/login", "POST", {...form})
-            auth.login(data.token, data.userId)
+            socket.emit("user:login",{...form}, (callback)=>{
+                if (callback.success){
+                    auth.login(callback.token, callback.userId)
+                } else {
+                    message(callback.message)
+                }
+            })
         } catch (e) {
+            console.log(`Error: ${e.message}`)
         }
     }
 

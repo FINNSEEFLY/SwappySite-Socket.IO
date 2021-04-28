@@ -3,13 +3,15 @@ import {AuthContext} from "../context/AuthContext";
 import {useMessage} from "../hooks/materialToast";
 import {useHttp} from "../hooks/httpUtils";
 import {useHistory} from "react-router-dom";
+import {SocketIOContext} from "../context/SocketIOContext";
 
 export const CreateLinksPage = () => {
     document.title = 'Создать ссылку';
     const auth = useContext(AuthContext)
+    const {socket} = useContext(SocketIOContext);
     const message = useMessage()
     const history = useHistory()
-    const {loading, request, error, clearError} = useHttp()
+    const {loading, error, clearError} = useHttp()
     const [form, setForm] = useState({
         longUrl: '',
         shortUrl: '',
@@ -29,7 +31,6 @@ export const CreateLinksPage = () => {
     }, [error, message, clearError])
 
 
-
     async function createShortLinkButtonClickHandler() {
         try {
             let body = {}
@@ -46,32 +47,38 @@ export const CreateLinksPage = () => {
             } else {
                 body.shortUrl = form.shortUrl
             }
-            if (flags.hasPassword && form.password==='') {
+            if (flags.hasPassword && form.password === '') {
                 message("Заполните пароль")
                 abort = true
             } else if (flags.hasPassword) {
                 body.password = form.password
             }
-            if (flags.hasClicksLimit && form.clickLimit<0) {
+            if (flags.hasClicksLimit && form.clickLimit < 0) {
                 message('Ограничение кликов должно быть положительным')
                 abort = true
             } else if (flags.hasClicksLimit) {
                 body.clickLimit = form.clickLimit
             }
-            if (flags.hasDisabledOnDateTime && form.disabledOnDateTime==='') {
+            if (flags.hasDisabledOnDateTime && form.disabledOnDateTime === '') {
                 message('Заполните дату и время')
                 abort = true
             } else if (flags.hasDisabledOnDateTime) {
                 body.disabledOnDateTime = form.disabledOnDateTime
             }
             if (!abort) {
-                const data = await request("/system/link/create", "POST", body,
-                    {Authorization: `Bearer ${auth.token}`})
-                if (data.statusCode ===401) {
-                    auth.logout()
-                    history.push("/system/login")
-                }
-                message(data.message)
+                socket.emit("user:auth", auth.token, callback => {
+                    if (callback.ok) {
+                        socket.emit("link:create", {...body, token:auth.token}, callback => {
+                            message(callback.message)
+                            if (!callback.success) {
+                                console.log(callback.message);
+                            }
+                        })
+                    } else {
+                        auth.logout()
+                        history.push("/system/login")
+                    }
+                })
             }
         } catch (e) {
         }

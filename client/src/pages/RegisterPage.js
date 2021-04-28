@@ -3,11 +3,13 @@ import {AuthContext} from "../context/AuthContext";
 import {useContext, useState, useEffect} from 'react'
 import {useMessage} from "../hooks/materialToast";
 import {useHttp} from "../hooks/httpUtils";
+import {SocketIOContext} from "../context/SocketIOContext";
 
 export const RegisterPage = () => {
     const auth = useContext(AuthContext)
+    const {socket} = useContext(SocketIOContext);
     const message = useMessage()
-    const {loading, request, error, clearError} = useHttp()
+    const {loading, error, clearError} = useHttp()
     const [form, setForm] = useState({
         email: '', password: '', login: ''
     })
@@ -16,9 +18,10 @@ export const RegisterPage = () => {
 
     async function registerButtonClickHandler(event) {
         try {
-            const data = await request("/system/auth/register", "POST", {...form})
-            message(data.message)
-            auth.login(data.token, data.userId)
+            socket.emit("user:register",{...form},(callback)=>{
+                message(callback.message);
+                if (callback.success) auth.login(callback.token, callback.userId)
+            })
         } catch (e) {
         }
     }

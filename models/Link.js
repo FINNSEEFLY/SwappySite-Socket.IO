@@ -342,3 +342,4 @@ module.exports.receiveStatistics = receiveStatistics
 module.exports.getShortLinkId = getShortLinkId
 module.exports.makeRandomShortLink = makeRandomShortLink
 module.exports.routeSomeLink = routeSomeLink
+module.exports.insertRandomLink = insertRandomLink
